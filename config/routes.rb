@@ -5,6 +5,10 @@ Rails.application.routes.draw do
 
   mount ActionCable.server => '/cable'
 
+  authenticate :user, -> (user) { user.has_role?(:reviewer) } do
+    mount Blazer::Engine, at: "data"
+  end
+
   get 'users/username'
   post 'users/username', to: "users#set_username"
   get 'users/apps', to: 'users#apps'

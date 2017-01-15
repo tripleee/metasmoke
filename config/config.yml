@@ -9,6 +9,8 @@ common: &common
     integration_pem_file: '/ms-ci.pem'
     integration_id: 896
     installation_id: 4946
+  data_explorer:
+    database_url: 'mysql2://username:password@localhost:3306/database_name'
   api_field_mappings:
     - api_keys.id
     - api_keys.created_at

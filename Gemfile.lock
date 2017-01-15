@@ -55,6 +55,10 @@ GEM
       rails-observers (~> 0.1.2)
     awesome_print (1.7.0)
     bcrypt (3.1.11)
+    blazer (1.7.7)
+      chartkick
+      rails
+      safely_block (>= 0.1.1)
     builder (3.2.2)
     byebug (9.0.6)
     capistrano (3.7.1)
@@ -100,6 +104,7 @@ GEM
       responders
       warden (~> 1.2.3)
     docile (1.1.5)
+    errbase (0.0.3)
     erubis (2.7.0)
     execjs (2.7.0)
     faraday (0.10.1)
@@ -185,6 +190,8 @@ GEM
     responders (2.3.0)
       railties (>= 4.2.0, < 5.1)
     rolify (5.1.0)
+    safely_block (0.1.1)
+      errbase
     sass (3.4.23)
     sass-rails (5.0.6)
       railties (>= 4.0.0, < 6)
@@ -246,6 +253,7 @@ PLATFORMS
 DEPENDENCIES
   audited (~> 4.3)
   awesome_print
+  blazer
   byebug
   capistrano
   capistrano-bundler
@@ -289,4 +297,4 @@ DEPENDENCIES
   will_paginate-bootstrap
 
 BUNDLED WITH
-   1.13.6
+   1.13.7
