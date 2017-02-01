@@ -10,7 +10,6 @@
 // Read Sprockets README (https://github.com/rails/sprockets#sprockets-directives) for details
 // about supported directives.
 //
-//= require jquery
 //= require jquery_ujs
 //= require turbolinks
 //= require moment.min.js
@@ -19,6 +18,8 @@
 $(document).on('turbolinks:load', function() {
 
   $('.sortable-table').tablesort();
+
+  $('.selectpicker').selectpicker();
 
   $(".admin-report").click(function(ev) {
     ev.preventDefault();

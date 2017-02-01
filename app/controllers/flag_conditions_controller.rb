@@ -5,23 +5,23 @@ class FlagConditionsController < ApplicationController
   before_action :verify_authorized, :only => [:edit, :update, :destroy, :enable]
   before_action :check_registration_status, :only => [:new]
   before_action :set_preview_data, :only => [:new, :edit, :preview]
-  before_action :verify_flagger, :only => [:sandbox]
+  before_action :verify_reviewer, :only => [:sandbox]
 
   def index
     @conditions = current_user.flag_conditions
   end
 
   def sandbox
-    @condition = FlagCondition.new
+    @condition = FlagCondition.new(:site_ids => Site.mains.map(&:id))
   end
 
   def full_list
-    @conditions = FlagCondition.all
+    @conditions = FlagCondition.all.includes(:user)
     render :index
   end
 
   def new
-    @condition = FlagCondition.new
+    @condition = FlagCondition.new(:site_ids => Site.mains.map(&:id))
   end
 
   def create

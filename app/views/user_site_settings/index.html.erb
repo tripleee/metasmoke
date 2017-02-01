@@ -1,4 +1,4 @@
-<h3>Autoflagging Preferences</h3>
+<h3><%= title "Autoflagging Preferences" %></h3>
 <p>These are the preferences you've set for autoflagging. You can choose only certain sites to flag on by associating
   your preferences with only those sites.</p>
 
@@ -14,10 +14,14 @@
       can in some cases result in your SE account being suspended. Only tick the box if you are happy with this responsibility.
     </p>
     <hr/>
-    <input id="red-button" name="red-button" type="checkbox" <%= "checked" if current_user.flags_enabled %> <%= "disabled" if (FlagSetting["registration_enabled"] == "0" || !current_user.has_role?(:flagger)) and not current_user.flags_enabled %> />
-    <label for="red-button">Use my account to cast flags automatically</label>
-    <% if FlagSetting["registration_enabled"] == "0" and not current_user.flags_enabled %>
-      <p class="text-muted">Registration is currently disabled.</p>
+    <% if current_user.api_token.nil? %>
+      <p class="text-info">You need to authenticate for write access first; <%= link_to "you can do that here", url_for(:controller => :authentication, :action => :status) %>.</p>
+    <% else %>
+      <input id="red-button" name="red-button" type="checkbox" <%= "checked" if current_user.flags_enabled %> <%= "disabled" if (FlagSetting["registration_enabled"] == "0" || !current_user.has_role?(:flagger)) and not current_user.flags_enabled %> />
+      <label for="red-button">Use my account to cast flags automatically</label>
+      <% if FlagSetting["registration_enabled"] == "0" and not current_user.flags_enabled %>
+        <p class="text-muted">Registration is currently disabled.</p>
+      <% end %>
     <% end %>
     <hr/>
     If you're trying to get started with autoflags for the first time, you'll also need to set up your preferences (which govern how many of your
@@ -42,7 +46,7 @@
         <td class="text-muted"><%= pref.id %></td>
         <td><%= pref.sites.count %></td>
         <td><%= pref.max_flags %></td>
-        <td><%= FlagLog.where(:user => current_user, :site => pref.sites, :success => true, :is_dry_run => false).where('created_at > ?', 1.day.ago).count %></td>
+        <td><%= current_user.flag_logs.where(:success => true).where('created_at > ?', 1.day.ago).count %></td>
         <td><%= link_to "Edit", url_for(:controller => :user_site_settings, :action => :edit, :id => pref.id) %></td>
         <td><%= link_to "Delete", url_for(:controller => :user_site_settings, :action => :destroy, :id => pref.id),
                         :method => :delete, :data => { :confirm => "Are you sure?" }, :class => "text-danger" %></td>

@@ -74,6 +74,7 @@ Rails.application.routes.draw do
   get "post/:id/body", to: "posts#body"
   get "post/:id/feedbacks.json", to: 'posts#feedbacksapi'
   get "post/:id/flag_logs", to: 'flag_log#by_post', as: :post_flag_logs
+  post "post/:id/index_feedback", to: "posts#reindex_feedback"
 
   get "users", to: "stack_exchange_users#index"
 
@@ -135,6 +136,7 @@ Rails.application.routes.draw do
 
   post 'dev/update_sites', :to => 'developer#update_sites'
   get 'dev/prod_log', :to => 'developer#production_log'
+  get 'dev/blank', :to => 'developer#blank_page'
 
   # flagging
   get 'flagging', :to => 'flag_settings#dashboard'
@@ -152,8 +154,9 @@ Rails.application.routes.draw do
     post 'preferences/enable', :to => 'user_site_settings#enable_flagging'
     resources :user_site_settings, :path => "/preferences", :except => [:show]
 
-    get 'logs', :to => 'flag_log#index'
-    get 'logs/unflagged', :to => 'flag_log#not_flagged'
+    get 'logs', :to => 'flag_log#index', :as => :flag_logs
+    get 'logs/unflagged', :to => 'flag_log#not_flagged', :as => :unflagged_logs
+    get 'users/:user_id/logs', :to => 'flag_log#index', :as => :flag_logs_by_user
 
     scope "/audits" do
       get "settings", :to => 'flag_settings#audits', :as => "flag_settings_audits"

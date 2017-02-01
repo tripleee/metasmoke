@@ -1,4 +1,4 @@
-<h3>Autoflagging Preferences (<%= @user.try(:username) %>)</h3>
+<h3><%= title "Autoflagging Preferences (#{@user.try(:username)})" %></h3>
 
 <table class="table table-striped">
   <thead>
@@ -11,7 +11,7 @@
     </tr>
   </thead>
   <tbody>
-    <%= @preferences.each do |pref| %>
+    <% @preferences.each do |pref| %>
       <tr>
         <td class="text-muted"><%= pref.id %></td>
         <td><%= pref.sites.count %></td>

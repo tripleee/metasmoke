@@ -1,7 +1,7 @@
 require 'open-uri'
 
 class AuthenticationController < ApplicationController
-  before_action :authenticate_user! 
+  before_action :authenticate_user!
   def status
     puts AppConfig
 
@@ -12,22 +12,13 @@ class AuthenticationController < ApplicationController
     config = AppConfig["stack_exchange"]
 
     request_params = { "client_id" => config["client_id"], "client_secret" => config["client_secret"], "code" => params[:code], "redirect_uri" => config["redirect_uri"] }
-    resp = Net::HTTP.post_form(URI.parse('https://stackexchange.com/oauth/access_token'), request_params)
+    response = Rack::Utils.parse_nested_query(Net::HTTP.post_form(URI.parse('https://stackexchange.com/oauth/access_token'), request_params).body)
 
-    # Possibly fragile, but I *think* it's fine
+    token = response["access_token"]
 
-    token = nil
+    access_token_info = JSON.parse(open("https://api.stackexchange.com/2.2/access-tokens/#{token}?key=#{config["key"]}").read)["items"][0]
 
-    begin
-      token = resp.body.scan(/access_token=(.*)&/).first.first
-    rescue
-
-    end
-
-    puts access_token_info = JSON.parse(open("https://api.stackexchange.com/2.2/access-tokens/#{token}?key=#{config["key"]}").read)["items"][0]
-
-    puts current_user.stack_exchange_account_id = access_token_info["account_id"]
-
+    current_user.stack_exchange_account_id = access_token_info["account_id"]
     current_user.update_chat_ids
 
     begin
@@ -42,6 +33,8 @@ class AuthenticationController < ApplicationController
     current_user.save!
 
     ActiveRecord::Base.logger = old_logger
+
+    flash[:success] = "Successfully registered #{'write' if current_user.api_token.present?} token"
 
     redirect_to authentication_status_path
   end
