@@ -21,7 +21,10 @@ class FlagConditionsController < ApplicationController
   end
 
   def new
-    @condition = FlagCondition.new(:site_ids => Site.mains.map(&:id))
+    @condition = FlagCondition.new(:site_ids => Site.mains.map(&:id),
+                                   :min_weight => 280,
+                                   :max_poster_rep => 1,
+                                   :min_reason_count => 1)
   end
 
   def create
@@ -48,6 +51,14 @@ class FlagConditionsController < ApplicationController
   end
 
   def edit
+    unless @condition.flags_enabled
+      @condition.flags_enabled = true
+      @condition.validate
+
+      @validation_errors = @condition.errors.dup
+      @condition.restore_attributes
+      @condition.errors.clear
+    end
   end
 
   def update
@@ -78,13 +89,34 @@ class FlagConditionsController < ApplicationController
     end
   end
 
+  def one_click_setup
+    unless current_user.api_token.present?
+      flash[:warning] = "You need to be write-authenticated before you can set up flagging."
+      redirect_to url_for(:controller => :authentication, :action => :status) and return
+    end
+  end
+
+  def run_ocs
+    unless current_user.api_token.present?
+      flash[:warning] = "You need to be write-authenticated before you can set up flagging."
+      redirect_to url_for(:controller => :authentication, :action => :status) and return
+    end
+
+    condition = FlagCondition.create(:user => current_user, :sites => Site.mains, :flags_enabled => true, :min_weight => 280, :max_poster_rep => 1, :min_reason_count => 1)
+    preference= UserSiteSetting.create(:user => current_user, :sites => Site.mains, :max_flags => 7)
+    current_user.update(:flags_enabled => true)
+
+    flash[:info] = "The necessary settings for autoflagging have been created - please review them to make sure you're happy."
+    redirect_to url_for(:controller => :flag_settings, :action => :dashboard)
+  end
+
   private
   def set_condition
     @condition = FlagCondition.find params[:id]
   end
 
   def condition_params
-    params.require(:flag_condition).permit(:min_weight, :max_poster_rep, :min_reason_count, :sites)
+    params.require(:flag_condition).permit(:min_weight, :max_poster_rep, :min_reason_count, :sites, :flags_enabled)
   end
 
   def verify_authorized

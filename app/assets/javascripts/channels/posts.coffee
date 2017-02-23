@@ -1,11 +1,11 @@
 is_page_visible = true
 num_unseen_posts = 0
 
-$(document).on 'page:change', ->
+$(document).on 'turbolinks:load', ->
   if location.pathname == '/posts'
     App.posts = App.cable.subscriptions.create "PostsChannel",
       received: (data) ->
-        $('table tbody').prepend(data['row'])
+        $('table#posts-index-table tbody').prepend(data['row'])
 
         unless is_page_visible
           num_unseen_posts++

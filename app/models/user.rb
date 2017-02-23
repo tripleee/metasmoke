@@ -13,13 +13,25 @@ class User < ApplicationRecord
   has_and_belongs_to_many :sites
   has_many :user_site_settings
   has_many :flag_conditions
-  has_many :flag_logs
+  has_many :flag_logs, :dependent => :nullify
   has_many :smoke_detectors
+  has_many :moderator_sites
 
-  # All accounts start with reviewer role enabled
+  # All accounts start with flagger role enabled
   after_create do
-    self.add_role :reviewer
+    self.add_role :reviewer if self.stack_exchange_account_id.present?
+    self.add_role :flagger
     SmokeDetector.send_message_to_charcoal "New metasmoke user '#{self.username}' created"
+  end
+
+  after_save do
+    if stack_exchange_account_id_changed?
+      if stack_exchange_account_id.present?
+        self.add_role :reviewer
+      else
+        self.remove_role :reviewer
+      end
+    end
   end
 
   before_save do
@@ -44,11 +56,42 @@ class User < ApplicationRecord
   def update_chat_ids
     return if stack_exchange_account_id.nil?
 
-    self.stackexchange_chat_id = Net::HTTP.get_response(URI.parse("http://chat.stackexchange.com/accounts/#{stack_exchange_account_id}"))["location"].scan(/\/users\/(\d*)\//)[0][0]
+    begin
+      self.stackexchange_chat_id = Net::HTTP.get_response(URI.parse("http://chat.stackexchange.com/accounts/#{stack_exchange_account_id}"))["location"].scan(/\/users\/(\d*)\//)[0][0]
+    rescue
+      puts "Probably no c.SE ID"
+    end
 
-    self.stackoverflow_chat_id = Net::HTTP.get_response(URI.parse("http://chat.stackoverflow.com/accounts/#{stack_exchange_account_id}"))["location"].scan(/\/users\/(\d*)\//)[0][0]
+    begin
+      self.stackoverflow_chat_id = Net::HTTP.get_response(URI.parse("http://chat.stackoverflow.com/accounts/#{stack_exchange_account_id}"))["location"].scan(/\/users\/(\d*)\//)[0][0]
+    rescue
+      puts "Probably no c.SO ID"
+    end
 
-    self.meta_stackexchange_chat_id = Net::HTTP.get_response(URI.parse("http://chat.meta.stackexchange.com/accounts/#{stack_exchange_account_id}"))["location"].scan(/\/users\/(\d*)\//)[0][0]
+    begin
+      self.meta_stackexchange_chat_id = Net::HTTP.get_response(URI.parse("http://chat.meta.stackexchange.com/accounts/#{stack_exchange_account_id}"))["location"].scan(/\/users\/(\d*)\//)[0][0]
+    rescue
+      puts "Probably no c.mSE ID"
+    end
+  end
+
+  def get_username(readonly_api_token=nil)
+    return if api_token.nil? and readonly_api_token.nil?
+
+    begin
+      config = AppConfig["stack_exchange"]
+      auth_string = "key=#{AppConfig["stack_exchange"]["key"]}&access_token=#{readonly_api_token || api_token}"
+
+      resp = JSON.parse(Net::HTTP.get_response(URI.parse("https://api.stackexchange.com/2.2/me/associated?pagesize=1&filter=!ms3d6aRI6N&#{auth_string}")).body)
+
+      first_site = resp["items"][0]["site_url"]
+
+      resp = JSON.parse(Net::HTTP.get_response(URI.parse("https://api.stackexchange.com/2.2/me?site=stackoverflow&filter=!-.wwQ56Mfo3J&#{auth_string}")).body)
+
+      return resp["items"][0]["display_name"]
+    rescue
+      return
+    end
   end
 
   def self.code_admins
@@ -61,7 +104,40 @@ class User < ApplicationRecord
 
   # Flagging
 
+  def update_moderator_sites
+    return if api_token.nil?
+
+    page = 1
+    has_more = true
+    self.moderator_sites = []
+    auth_string = "key=#{AppConfig["stack_exchange"]["key"]}&access_token=#{api_token}"
+    while has_more
+      params = "?page=#{page}&pagesize=100&filter=!6OrReH6NRZrmc&#{auth_string}"
+      url = "https://api.stackexchange.com/2.2/me/associated" + params
+
+      response = JSON.parse(Net::HTTP.get_response(URI.parse(url)).body)
+      has_more = response["has_more"]
+      page += 1
+
+      response["items"].each do |network_account|
+        if network_account["user_type"] == "moderator"
+          self.moderator_sites << ModeratorSite.new(:site_id => Site.find_by_site_url(network_account["site_url"]).id)
+        end
+      end
+
+      if has_more and response.include? "backoff"
+        sleep response["backoff"].to_i
+      end
+    end
+
+    save!
+  end
+
   def spam_flag(post, dry_run=false)
+    if self.moderator_sites.pluck(:site_id).include? post.site_id
+      raise "User is a moderator on this site; not flagging"
+    end
+
     if api_token.nil?
       raise "Not authenticated"
     end
@@ -74,6 +150,11 @@ class User < ApplicationRecord
 
     # Try to get flag options
     flag_options = JSON.parse(Net::HTTP.get_response(URI.parse("https://api.stackexchange.com/2.2/#{path}/#{post.stack_id}/flags/options?site=#{site.site_domain}&#{auth_string}")).body)["items"]
+
+    unless flag_options.present?
+      return false, "Flag options not present"
+    end
+
     spam_flag_option = flag_options.select { |fo| fo["title"] == "spam" }.first
 
     unless spam_flag_option.present?
