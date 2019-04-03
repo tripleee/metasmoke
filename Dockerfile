@@ -2,7 +2,7 @@ FROM ruby:2.5
 
 ######## FIXME: hardcoded password "password" everywhere
 
-# The base image ruby:2.3 is Debian Jessie
+# The base image ruby:2.5 is Debian Jessie
 RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg \
        | gpg --dearmor > /etc/apt/trusted.gpg.d/yarn.gpg \
     && printf 'deb http://dl.yarnpkg.com/debian/ stable main\n' \
@@ -46,3 +46,8 @@ RUN gem install bundler \
 
 EXPOSE 5000 8080
 CMD ["./rundb"]
+
+# Reminder to self:
+# docker build -t metasmoke .
+# docker tag metasmoke:latest tripleee/metasmoke:latest
+# docker push tripleee/metasmoke:latest
